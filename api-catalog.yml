@@ -10,36 +10,64 @@ spring:
     port: 5672  
   zipkin:
     baseUrl: http://localhost:9411/
-  datasource:
-    driverClassName: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/movie-dev
-    username: usr-movie
-    password: pwd-movie
-
-jpa:
-    generate-ddl: true
-    hibernate:
-      enable_lazy_load_no_trans: true
-      event:
-        merge:
-          entity_copy_observer: allow
-      ddl-auto: update
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQL55Dialect
-        format_sql: true
-    show-sql: false
-
-info:
-  application:
-    name: api-catalog
+  mongodb:
+    embedded:
+      version: 4.0.2
+  data:
+    mongodb:
+      database: test
+      port: 27017
 
 eureka:
   instance:
     hostname: localhost
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${random_value}}
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
   client:
     registerWithEureka: true
     fetchRegistry: true
     serviceUrl:
-      defaultZone: http://localhost:8080/eureka/
+      defaultZone: http://localhost:8761/eureka/
+urlCheck: http://localhost:8083
+
+management:
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+resilience4j:
+  retry:
+    configs:
+      default:
+        max-retry-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+      instances:
+        retryFindByGenre:
+          base-config: default
+          max-retry-attempts: 5
+          wait-duration: 2s
+          retry-exceptions:
+          - java.net.ConnectException
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        wait-duration-in-open-state: 30s
+        automatic-transition-from-open-to-half-open-enabled: true
+        failure-rate-threshold: 50
+    instances:
+      findByGenre:
+        base-config: default
+        sliding-window-type: TIME_BASED
+        sliding-window-size: 5
+        wait-duration-in-open-state: 1m
+        failure-rate-threshold: 20  
